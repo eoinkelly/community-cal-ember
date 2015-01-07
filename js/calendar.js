@@ -1,10 +1,19 @@
+// If the goal of this app is to be included in other pages I would consider
+// using a name that is less likely to be in use e.g. BLUGCalendarApp.
+
 // create ember-app instance
 var App = Ember.Application.create({
     rootElement: '.community-calendar'
 });
+
+// As much as possibly you want to avoid polluting the global namespace so I
+// would rename this to `App._events`
+
 // list of events
 var _events = []
 
+// I suggest moving this function and its invocation into a separate file as it
+// has a separate purpose.
 function handlebars_extend() {
     // handlebar helpers
     var helpers = [{
@@ -58,7 +67,12 @@ function handlebars_extend() {
     // used handlebars as it works differently
     Handlebars.registerHelper('link', function(id) {
         id = Handlebars.Utils.escapeExpression(id);
-        template = '#/communitycal/';
+        template = '#/communitycal/'; // unused variable
+
+        // I think it would be clearer to include the ending tag rather than
+        // relying on SafeString to fix it. It also gives the reader of the
+        // code less to think about and removes the need for the comment line
+
         // don't need the ending tag (safe escape)
         var result = '<a href="#/communitycal/' + id + '">';
 
@@ -103,6 +117,21 @@ App.DashboardRoute = Ember.Route.extend({
     }
 });
 
+// I think the calendar widget is probably best expressed as an Ember Component
+// (http://emberjs.com/guides/components/).
+//
+// * A component is a controller+view is generally easier to work with because
+//   of that (the separation between ember controller and ember view is not clear
+//   at first).
+// * Components are much closer to what other frameworks call "views" e.g. a
+//   component has similar responsibilities to a Backbone View object.
+//
+// * The component should be completely responsible the piece of DOM you give
+//   it to manage (in this case the calendar widget). I suggest removing the
+//   `renderTemplate` stuff from the Route and let component manage it. I think
+//   this will simplify the implementation a lot as the component template can
+//   include markup for all 3 tabs and it can show/hide them using standard
+//   jQuery techniques.
 App.DashboardView = Ember.View.extend({
     activeTab: Ember.computed.alias('controller.activeTab'),
 
@@ -124,10 +153,13 @@ App.DashboardView = Ember.View.extend({
 
 var steam = Steam.create(App);
 
+// App.steam.get('techgrind.events/order-by-date', function(data) { // using alternate version code block from steam.js
 steam.get('techgrind.events/order-by-date', function(data) {
+    // I suggest making this a property of the component not a global (see my comments on components above)
     App.obj = Ember.Object.create({
         "events": data['event-list']
     });
+    // All this should be in the component template (see my comments on components above)
     var templates = [{
         name: 'list',
         list: '\
@@ -166,6 +198,7 @@ steam.get('techgrind.events/order-by-date', function(data) {
       <li><a href="#" data-tab="add" {{action selectTab "add"}}>add</a></li>\
     </ul>'
     }];
+    // This will make ember sad. It can be elimated by using a component for the calendar widget. (see comments above)
     for (var i = 0; i < templates.length; i++) {
         $('.community-calendar').append('<script type="text/x-handlebars" data-template-name="' + templates[i].name + '">' + templates[i][templates[i].name] + "</script>");
     };
